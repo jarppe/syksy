@@ -5,9 +5,16 @@
             [muuntaja.middleware :as muuntaja]
             [syksy.web.cache :as cache]))
 
-(defmethod ig/init-key ::handler [_ {:keys [routes]}]
+(defn wrap-ctx [handler ctx]
+  (fn [request]
+    (-> request
+        (assoc :ctx ctx)
+        (handler))))
+
+(defmethod ig/init-key ::handler [_ {:keys [routes ctx]}]
   (assert (fn? routes) "routes is mandatory and needs to be fn")
   (-> routes
+      (wrap-ctx ctx)
       (muuntaja/wrap-format)
       (params/wrap-params)
       (cache/wrap-no-store)))
