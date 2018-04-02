@@ -7,6 +7,7 @@
   (-> 'app.components/components
       (resolve)
       (apply nil)
+      (doto (ig/load-namespaces))
       (ig/init)))
 
 (defn -main [& args]
