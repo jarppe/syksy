@@ -2,7 +2,9 @@
   (:require [clojure.tools.logging :as log]
             [integrant.core :as ig]
             [ring.middleware.params :as params]
-            [muuntaja.middleware :as muuntaja]
+            [muuntaja.core :as muuntaja]
+            [muuntaja.middleware :as middleware]
+            [muuntaja.format.jsonista :as json-format]
             [syksy.web.cache :as cache]))
 
 (defn wrap-ctx [handler ctx]
@@ -11,10 +13,14 @@
         (assoc :ctx ctx)
         (handler))))
 
+(def muuntaja (-> muuntaja/default-options
+                  json-format/with-json-format
+                  muuntaja/create))
+
 (defmethod ig/init-key ::handler [_ {:keys [routes ctx]}]
   (assert (fn? routes) "routes is mandatory and needs to be fn")
   (-> routes
       (wrap-ctx ctx)
-      (muuntaja/wrap-format)
+      (middleware/wrap-format muuntaja)
       (params/wrap-params)
       (cache/wrap-no-store)))
