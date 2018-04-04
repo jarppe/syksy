@@ -13,14 +13,13 @@
         (assoc :ctx ctx)
         (handler))))
 
-(def muuntaja (-> muuntaja/default-options
-                  json-format/with-json-format
-                  muuntaja/create))
 
 (defmethod ig/init-key ::handler [_ {:keys [routes ctx]}]
   (assert (fn? routes) "routes is mandatory and needs to be fn")
   (-> routes
       (wrap-ctx ctx)
-      (middleware/wrap-format muuntaja)
+      (middleware/wrap-format (-> muuntaja/default-options
+                                  json-format/with-json-format
+                                  muuntaja/create))
       (params/wrap-params)
       (cache/wrap-no-store)))
