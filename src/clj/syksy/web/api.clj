@@ -13,13 +13,20 @@
         (assoc :ctx ctx)
         (handler))))
 
+(defn apply-middleware [handler middleware]
+  (reduce (fn [handler middleware]
+            (middleware handler))
+          handler
+          middleware))
 
-(defmethod ig/init-key ::handler [_ {:keys [routes ctx]}]
+(defmethod ig/init-key ::handler [_ {:keys [routes ctx middleware]}]
   (assert (fn? routes) "routes is mandatory and needs to be fn")
+  (log/info "creating api-handler")
   (-> routes
       (wrap-ctx ctx)
       (middleware/wrap-format (-> muuntaja/default-options
                                   json-format/with-json-format
                                   muuntaja/create))
       (params/wrap-params)
-      (cache/wrap-no-store)))
+      (cache/wrap-no-store)
+      (apply-middleware middleware)))
