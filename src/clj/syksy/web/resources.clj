@@ -6,7 +6,9 @@
             [ring.util.http-response :as resp]
             [ring.util.mime-type :refer [default-mime-types]]
             [syksy.web.cache :as cache]
-            [syksy.util.checksum :as checksum])
+            [syksy.util.checksum :as checksum]
+            [syksy.web.resources.caching-checksum :as caching-checksum]
+            [syksy.util.mode :as mode])
   (:import (org.apache.commons.io FilenameUtils)))
 
 (defn- make-resource-name->mime-type [mime-type-overrides]
@@ -31,9 +33,8 @@
 
 (defmethod ig/init-key ::handler [_ {:keys [asset-prefix asset-dir mime-types checksum-fn]
                                      :or {asset-prefix "/asset/"
-                                          asset-dir "public/"
-                                          checksum-fn default-checksum}}]
-  (assert (fn? checksum-fn) "checksum-fn must be a fn")
+                                          asset-dir "public/"}}]
+  (assert (or (nil? checksum-fn) (fn? checksum-fn)) "checksum-fn must be a fn")
   (let [; Ensure asset-prefix starts and ends with "/"
         asset-prefix (str (if-not (str/starts-with? asset-prefix "/") "/")
                           asset-prefix
@@ -43,8 +44,15 @@
                        (if-not (str/ends-with? asset-dir "/") "/"))
         asset-prefix-len (count asset-prefix)
         resource-name->mime-type (make-resource-name->mime-type mime-types)
+        checksum-fn (or checksum-fn
+                        (if (mode/dev-mode?)
+                          default-checksum
+                          caching-checksum/checksum-cache))
         not-modified (resp/not-modified)]
-    (log/infof "resource handler: asset-prefix=%s, asset-dir=%s" (pr-str asset-prefix) (pr-str asset-dir))
+    (log/infof "resource handler: mode=%s, asset-prefix=%s, asset-dir=%s"
+               (-> (mode/mode) name str/upper-case)
+               (pr-str asset-prefix)
+               (pr-str asset-dir))
     (fn [request]
       (when (and (-> request :request-method (= :get))
                  (-> request :uri (str/starts-with? asset-prefix)))
