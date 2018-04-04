@@ -1,6 +1,8 @@
 (ns syksy.main
-  (:require [clojure.tools.logging :as log]
-            [integrant.core :as ig])
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [integrant.core :as ig]
+            [syksy.util.mode :as mode])
   (:gen-class))
 
 (defn start-app []
@@ -12,7 +14,7 @@
 
 (defn -main [& args]
   (System/setProperty "org.jboss.logging.provider" "slf4j")
-  (log/info "application starting...")
+  (log/info (format "application starting, mode=%s..." (-> (mode/mode) name str/upper-case)))
   (require 'app.components)
   (try
     (start-app)
