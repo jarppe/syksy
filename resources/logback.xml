@@ -13,6 +13,6 @@
   </root>
 
   <logger name="syksy" level="DEBUG"/>
-  <logger name="back" level="DEBUG"/>
+  <logger name="app" level="DEBUG"/>
 
 </configuration>
