@@ -16,11 +16,11 @@
                  [org.slf4j/jcl-over-slf4j "1.7.25"]
                  [org.slf4j/jul-to-slf4j "1.7.25"]
                  [org.slf4j/log4j-over-slf4j "1.7.25"]
-                 [ch.qos.logback/logback-classic "1.2.3" :exclusions [org.slf4j/slf4j-api]]
-
-                 [metosin/testit "0.2.1" :scope "test"]
-                 [clj-http "3.8.0" :scope "test"]]
+                 [ch.qos.logback/logback-classic "1.2.3" :exclusions [org.slf4j/slf4j-api]]]
 
   :source-paths ["src/clj"]
   :test-paths ["test/clj"]
-  :profiles {:dev {:resource-paths ["test-resources"]}})
+  :profiles {:dev {:resource-paths ["test-resources"]
+                   :dependencies [[metosin/testit "0.2.1"]
+                                  [clj-http "3.8.0"]
+                                  [metosin/potpuri "0.5.1"]]}})
