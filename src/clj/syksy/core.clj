@@ -3,8 +3,12 @@
             [ring.util.http-response :as resp]
             [syksy.web.index :as index]))
 
-(defn default-components [{:keys [index-body routes ctx middleware handlers addon-handlers]}]
-  {[:syksy.web.server/server ::syksy] {:handlers (or handlers
+(defn default-components [{:keys [host port index-body routes ctx middleware handlers addon-handlers]
+                           :or {host "localhost"
+                                port 3000}}]
+  {[:syksy.web.server/server ::syksy] {:host host
+                                       :port port
+                                       :handlers (or handlers
                                                     (concat [(ig/ref [:syksy.web.api/handler ::syksy])
                                                              (ig/ref [:syksy.web.index/handler ::syksy])
                                                              (ig/ref [:syksy.web.resources/handler ::syksy])]

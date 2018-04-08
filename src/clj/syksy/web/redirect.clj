@@ -12,7 +12,7 @@
 (defmethod ig/init-key ::handler [_ {:keys [from location status body]
                                      :or {status 307}}]
   (assert (or (string? from)
-              (fn? from)
+              (ifn? from)
               (re? from))
           "`from` must be a string, function or regular expression")
   (assert (string? location)
@@ -22,7 +22,7 @@
   (log/infof "redirect: from=%s, location=%s, status=%d" (pr-str from) (pr-str location) status)
   (let [match? (cond
                  (string? from) (comp (partial = from) :uri)
-                 (fn? from) from
+                 (ifn? from) from
                  (re? from) (comp (partial re-matches from) :uri))
         redirect {:status status
                   :headers {"location" location}

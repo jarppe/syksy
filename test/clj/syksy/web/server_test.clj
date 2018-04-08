@@ -10,6 +10,7 @@
             [syksy.core :as core]
             [syksy.web.index :as index]
             [syksy.web.server :as server]
+            [syksy.web.resource :as resource]
             [syksy.web.resources :as resources]
             [syksy.web.redirect :as redirect]))
 
@@ -28,9 +29,11 @@
                                                        (resp/ok {:hello "world"
                                                                  :ctx (-> request :ctx)})))
                                            :ctx ctx
-                                           :addon-handlers [(ig/ref [::resources/handler ::test])
+                                           :addon-handlers [(ig/ref [::resource/handler ::test])
+                                                            (ig/ref [::resources/handler ::test])
                                                             (ig/ref [::redirect/handler ::test])]})
                  {[::server/server ::core/syksy] {:port 3001}
+                  [::resource/handler ::test] {:match? "/root" :resource-name "root.txt"}
                   [::resources/handler ::core/syksy] {:asset-dir "server-test-resources"}
                   [::resources/handler ::test] {:asset-prefix "/addon"
                                                 :asset-dir "addon-resources"}
@@ -82,6 +85,15 @@
   (fact
     (http/get "http://localhost:3001/foozaa" opts)
     =in=> {:status 404}))
+
+(deftest resource-is-served
+  (fact
+    (http/get "http://localhost:3001/root" opts)
+    =in=> {:status 200
+           :headers {"Content-Type" "text/plain; charset=utf-8"
+                     "cache-control" "no-cache"
+                     "etag" (re-pattern #"\d+")}
+           :body "Root"}))
 
 (deftest resources-are-served
   (fact

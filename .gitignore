@@ -3,3 +3,4 @@
 /.lein-*
 /.nrepl-*
 /pom.xml
+/pom.xml.asc
