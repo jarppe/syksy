@@ -36,7 +36,7 @@
         checksum-fn (or checksum-fn
                         (if (mode/dev-mode?)
                           default-checksum
-                          caching-checksum/checksum-cache))
+                          caching-checksum/caching-checksum))
         not-modified (resp/not-modified)]
     (fn [request]
       (when (-> request :request-method (= :get))
