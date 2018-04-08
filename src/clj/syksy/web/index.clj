@@ -11,9 +11,10 @@
 ;; Index page:
 ;;
 
-(defn index [{:keys [title loading]
+(defn index [{:keys [title loading favicon]
               :or {title "Another fancy Syksy app"
-                   loading "Loading..."}}]
+                   loading "Loading..."
+                   favicon "/asset/favicon.ico"}}]
   (hiccup/html
     (page/html5
       [:head
@@ -21,6 +22,7 @@
        [:meta {:charset "utf-8"}]
        [:meta {:http-equiv "X-UA-Compatible" :content "IE=edge"}]
        [:meta {:name "viewport" :content "width=device-width, initial-scale=1, shrink-to-fit=no"}]
+       [:link {:href favicon :rel "icon"}]
        (page/include-css "/asset/css/style.css")]
       [:body
        [:div#app
