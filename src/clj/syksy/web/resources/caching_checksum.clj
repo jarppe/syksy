@@ -5,7 +5,7 @@
 (defonce checksum-cache (atom {}))
 
 (defn caching-checksum [resource-name]
-  (if-let [checksum (get @caching-checksum resource-name)]
+  (if-let [checksum (get @checksum-cache resource-name)]
     checksum
     (when-let [resource (-> resource-name io/resource)]
       (let [checksum (with-open [in (-> resource io/input-stream)]
