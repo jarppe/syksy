@@ -1,4 +1,4 @@
-(defproject jarppe/syksy "0.0.0-SNAPSHOT"
+(defproject jarppe/syksy "0.0.1"
   :dependencies [[org.clojure/clojure "1.9.0" :scope "provided"]
 
                  [integrant "0.6.3"]
