@@ -20,7 +20,7 @@
           middleware))
 
 (defmethod ig/init-key ::handler [_ {:keys [routes ctx middleware]}]
-  (assert (fn? routes) "routes is mandatory and needs to be fn")
+  (assert (ifn? routes) "routes is mandatory and needs to be ifn")
   (log/info "creating api-handler")
   (-> routes
       (wrap-ctx ctx)
