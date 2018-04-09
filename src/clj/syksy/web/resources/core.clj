@@ -42,7 +42,7 @@
       (when (-> request :request-method (= :get))
         (when-let [resource-name (-> request :uri resource-name-fn)]
           (when-let [resource-checksum (checksum-fn resource-name)]
-            (if (-> request :headers (get cache/if-modified-since) (= resource-checksum))
+            (if (-> request :headers (get cache/if-none-match) (= resource-checksum))
               not-modified
               (-> resource-name
                   (io/resource)

@@ -9,13 +9,13 @@
 (def vary "vary")
 (def accept-encoding "accept-encoding")
 
-(def if-modified-since "if-modified-since")
+(def if-none-match "if-none-match")
 
 (defn wrap-cache [handler cache-control-value]
   (fn [req]
     (let [response (handler req)]
       (if (and (-> response map?)
-               (-> response :header (get cache-control) nil?))
+               (-> response :headers (get cache-control) nil?))
         (update response :headers
                 assoc cache-control cache-control-value
                       vary accept-encoding)

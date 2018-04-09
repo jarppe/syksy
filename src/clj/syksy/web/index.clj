@@ -47,6 +47,6 @@
     (fn [request]
       (when (and (-> request :request-method (= :get))
                  (-> request :uri (= "/")))
-        (if (-> request :headers (get cache/if-modified-since) (= index-hash))
+        (if (-> request :headers (get cache/if-none-match) (= index-hash))
           not-modified
           index-response)))))
