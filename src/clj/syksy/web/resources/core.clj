@@ -7,7 +7,9 @@
             [syksy.util.checksum :as checksum]
             [syksy.web.cache :as cache]
             [syksy.web.resources.caching-checksum :as caching-checksum])
-  (:import (org.apache.commons.io FilenameUtils)))
+  (:import (org.apache.commons.io FilenameUtils)
+           (java.io InputStream PipedInputStream PipedOutputStream)
+           (java.util.zip GZIPOutputStream)))
 
 (defn- make-resource-name->mime-type [mime-type-overrides]
   (let [with-charset-utf8 (fn [mime-types]
@@ -29,6 +31,33 @@
     (with-open [in (-> resource io/input-stream)]
       (-> in checksum/hash-input-stream str))))
 
+;;
+;; gzip support:
+;;
+
+(defn accept-gzip? [request]
+  (some-> request
+          :headers
+          (get "accept-encoding")
+          (str/includes? "gzip")))
+
+
+(defn gzip-content ^InputStream [^InputStream in gzip?]
+  (if gzip?
+    ; TODO: There should be a better way to compress input-stream?!?!
+    (let [zipped (PipedInputStream.)]
+      (future
+        (with-open [zipper (-> zipped
+                               PipedOutputStream.
+                               GZIPOutputStream.)]
+          (io/copy in zipper)))
+      zipped)
+    in))
+
+;;
+;; Make resource handler:
+;;
+
 (defn make-resource-handler [{:keys [mime-types checksum-fn resource-name-fn]}]
   (assert (or (nil? checksum-fn) (ifn? checksum-fn)) "checksum-fn must be a fn")
   (assert (ifn? resource-name-fn) "`resource-name-fn` must be a function")
@@ -44,10 +73,15 @@
           (when-let [resource-checksum (checksum-fn resource-name)]
             (if (-> request :headers (get cache/if-none-match) (= resource-checksum))
               not-modified
-              (-> resource-name
-                  (io/resource)
-                  (io/input-stream)
-                  (resp/ok)
-                  (resp/content-type (-> resource-name resource-name->mime-type))
-                  (resp/header "etag" resource-checksum)
-                  (resp/header cache/cache-control cache/cache-control-no-cache)))))))))
+              (let [gzip? (accept-gzip? request)]
+                (-> resource-name
+                    (io/resource)
+                    (io/input-stream)
+                    (gzip-content gzip?)
+                    (resp/ok)
+                    (update :headers (fn [headers]
+                                       (-> headers
+                                           (assoc "content-type" (-> resource-name resource-name->mime-type))
+                                           (assoc "etag" resource-checksum)
+                                           (assoc cache/cache-control cache/cache-control-no-cache)
+                                           (assoc "content-encoding" (if gzip? "gzip" "identity"))))))))))))))
