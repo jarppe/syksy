@@ -79,9 +79,7 @@
                     (io/input-stream)
                     (gzip-content gzip?)
                     (resp/ok)
-                    (update :headers (fn [headers]
-                                       (-> headers
-                                           (assoc "content-type" (-> resource-name resource-name->mime-type))
-                                           (assoc "etag" resource-checksum)
-                                           (assoc cache/cache-control cache/cache-control-no-cache)
-                                           (assoc "content-encoding" (if gzip? "gzip" "identity"))))))))))))))
+                    (update :headers assoc "content-type" (-> resource-name resource-name->mime-type)
+                                           "etag" resource-checksum
+                                           "content-encoding" (if gzip? "gzip" "identity")
+                                           cache/cache-control cache/cache-control-no-cache))))))))))
