@@ -15,4 +15,6 @@
   <logger name="syksy" level="DEBUG"/>
   <logger name="app" level="DEBUG"/>
 
+  <include optional="true" resource="log.xml"/>
+
 </configuration>
