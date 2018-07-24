@@ -1,9 +1,7 @@
 (ns syksy.web.resources
   (:require [clojure.string :as str]
-            [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [integrant.core :as ig]
-            [ring.util.http-response :as resp]
             [ring.util.mime-type :refer [default-mime-types]]
             [syksy.web.resources.core :as res]))
 
