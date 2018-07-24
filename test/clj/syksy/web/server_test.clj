@@ -75,10 +75,10 @@
                  :headers
                  (get "etag"))]
     (fact
-      (http/get "http://localhost:3001/" {:headers {"if-modified-since" etag}})
+      (http/get "http://localhost:3001/" {:headers {"if-none-match" etag}})
       =in=> {:status 304})
     (fact
-      (http/get "http://localhost:3001/" {:headers {"if-modified-since" "foo"}})
+      (http/get "http://localhost:3001/" {:headers {"if-none-match" "foo"}})
       =in=> {:status 200})))
 
 (deftest not-found-is-served
@@ -118,11 +118,12 @@
   (let [etag (-> (http/get "http://localhost:3001/asset/foo.txt")
                  :headers
                  (get "etag"))]
+    (println "etag:" etag)
     (fact
-      (http/get "http://localhost:3001/asset/foo.txt" {:headers {"if-modified-since" etag}})
+      (http/get "http://localhost:3001/asset/foo.txt" {:headers {"if-none-match" etag}})
       =in=> {:status 304})
     (fact
-      (http/get "http://localhost:3001/asset/foo.txt" {:headers {"if-modified-since" "foo"}})
+      (http/get "http://localhost:3001/asset/foo.txt" {:headers {"if-none-match" "foo"}})
       =in=> {:status 200})))
 
 (deftest addon-resources-are-served
