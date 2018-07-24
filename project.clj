@@ -9,10 +9,10 @@
                  [commons-io "2.6"]
                  [metosin/ring-http-response "0.9.0"]
                  [metosin/muuntaja "0.5.0"]
-                 [metosin/jsonista "0.1.1"]
+                 [metosin/jsonista "0.2.1"]
                  [hiccup "2.0.0-alpha1"]
 
-                 [org.clojure/tools.logging "0.4.0"]
+                 [org.clojure/tools.logging "0.4.1"]
                  [org.slf4j/jcl-over-slf4j "1.7.25"]
                  [org.slf4j/jul-to-slf4j "1.7.25"]
                  [org.slf4j/log4j-over-slf4j "1.7.25"]
@@ -21,6 +21,6 @@
   :source-paths ["src/clj"]
   :test-paths ["test/clj"]
   :profiles {:dev {:resource-paths ["test-resources"]
-                   :dependencies [[metosin/testit "0.2.1"]
-                                  [clj-http "3.8.0"]
+                   :dependencies [[metosin/testit "0.2.2"]
+                                  [clj-http "3.9.0"]
                                   [metosin/potpuri "0.5.1"]]}})
