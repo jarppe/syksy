@@ -14,4 +14,4 @@
 (def reset igr/reset)
 (def start igr/init)
 (def stop igr/halt)
-(def system state/system)
+(defn system [] state/system)
