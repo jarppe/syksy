@@ -26,7 +26,7 @@
     (fn [^String filename]
       (get mime-types (FilenameUtils/getExtension filename) "application/octet-stream"))))
 
-(defn default-checksum [resource-name]
+(defn- default-checksum [resource-name]
   (when-let [resource (-> resource-name io/resource)]
     (with-open [in (-> resource io/input-stream)]
       (-> in checksum/hash-input-stream str))))
@@ -35,14 +35,17 @@
 ;; gzip support:
 ;;
 
-(defn accept-gzip? [request]
-  (some-> request
+; FIXME: better gzip support neede
+(defn- accept-gzip? [request]
+  false
+  #_(some-> request
           :headers
           (get "accept-encoding")
           (str/includes? "gzip")))
 
 
-(defn gzip-content ^InputStream [^InputStream in gzip?]
+; FIXME: better gzip support neede
+(defn- gzip-content ^InputStream [^InputStream in gzip?]
   (if gzip?
     ; TODO: There should be a better way to compress input-stream?!?!
     (let [zipped (PipedInputStream.)]
@@ -74,12 +77,12 @@
             (if (-> request :headers (get cache/if-none-match) (= resource-checksum))
               not-modified
               (let [gzip? (accept-gzip? request)]
-                (-> resource-name
-                    (io/resource)
-                    (io/input-stream)
-                    (gzip-content gzip?)
-                    (resp/ok)
-                    (update :headers assoc "content-type" (-> resource-name resource-name->mime-type)
-                                           "etag" resource-checksum
-                                           "content-encoding" (if gzip? "gzip" "identity")
-                                           cache/cache-control cache/cache-control-no-cache))))))))))
+                (some-> resource-name
+                        (io/resource)
+                        (io/input-stream)
+                        (gzip-content gzip?)
+                        (resp/ok)
+                        (update :headers assoc "content-type" (-> resource-name resource-name->mime-type)
+                                               "etag" resource-checksum
+                                               "content-encoding" (if gzip? "gzip" "identity")
+                                               cache/cache-control cache/cache-control-no-cache))))))))))
