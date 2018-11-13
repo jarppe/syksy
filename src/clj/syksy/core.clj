@@ -1,24 +1,18 @@
 (ns syksy.core
   (:require [integrant.core :as ig]
-            [ring.util.http-response :as resp]))
+            [syksy.web.index :as index]))
 
-(defn default-components [{:keys [host port index-body routes ctx middleware handlers addon-handlers]
-                           :or {host "localhost"
-                                port 3000}}]
-  {[:syksy.web.server/server ::syksy] {:host host
-                                       :port port
-                                       :handlers (or handlers
-                                                     (concat [(ig/ref [:syksy.web.api/handler ::syksy])
-                                                              (ig/ref [:syksy.web.index/handler ::syksy])
-                                                              (ig/ref [:syksy.web.resources/handler ::syksy])]
-                                                             addon-handlers
-                                                             [(ig/ref [:syksy.web.not-found/handler ::syksy])]))}
-   [:syksy.web.resources/handler ::syksy] {}
-   [:syksy.web.not-found/handler ::syksy] {}
-   [:syksy.web.index/handler ::syksy] {:index-body index-body}
-   [:syksy.web.api/handler ::syksy] {:routes (or routes
-                                                 (-> {:message "Syksy is ready"}
-                                                     (resp/ok)
-                                                     (constantly)))
-                                     :ctx ctx
-                                     :middleware middleware}})
+(defn default-components [config]
+  {:syksy.web/server            {:host   (-> config :http :host)
+                                 :port   (-> config :http :port)
+                                 :router (ig/ref :syksy.web/router)}
+
+   :syksy.web/router            {:index-body       (or (-> config :index-body)
+                                                       (-> config :index (index/index)))
+                                 :interceptors     (-> config :interceptors)
+                                 :resource-handler (ig/ref :syksy.web.resources/handler)
+                                 :commands         (ig/ref :syksy.commands/commands)}
+
+   :syksy.web.resources/handler {}
+
+   :syksy.commands/commands     {:commands (-> config :commands)}})

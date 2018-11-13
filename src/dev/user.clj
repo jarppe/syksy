@@ -1,14 +1,14 @@
 (ns user
   (:require [integrant.core :as ig]
             [integrant.repl :as igr :refer [clear reset-all]]
-            [integrant.repl.state :as state]))
+            [integrant.repl.state :as state]
+            [syksy.config :as config]
+            [app.components :as app]))
 
 (igr/set-prep!
   (fn []
-    (require 'app.components)
-    (-> 'app.components/components
-        (resolve)
-        (apply nil)
+    (-> (config/load-config)
+        (app/components)
         (doto (ig/load-namespaces)))))
 
 (def reset igr/reset)

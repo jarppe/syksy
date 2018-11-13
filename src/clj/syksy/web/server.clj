@@ -3,30 +3,25 @@
             [integrant.core :as ig]
             [immutant.web :as immutant]))
 
+
 (def defaults {:host "localhost"
-               :port 3000
+               :port 4000
                :path "/"})
 
-(defmethod ig/init-key ::server [_ {:keys [handlers middleware] :as opts}]
-  (assert (sequential? handlers) "handlers is mandatory seq of handlers")
-  (assert (every? ifn? handlers) "each handler must be a fn")
-  (let [opts (-> defaults
-                 (merge opts)
-                 (dissoc :handlers)
-                 (dissoc :middleware))
-        handler (reduce (fn [handler mw]
-                          (cond
-                            (vector? mw) (apply (first mw) handler (rest mw))
-                            (ifn? mw) (mw handler)
-                            :else (throw (ex-info (str "don't understand middeware: " (pr-str mw)) {}))))
-                        (apply some-fn handlers)
-                        (reverse middleware))]
+
+(defmethod ig/init-key :syksy.web/server [_ {:keys [router] :as opts}]
+  (assert (ifn? router) "router must be a fn")
+  (let [opts (->> opts
+                  (filter (comp some? val))
+                  (into {})
+                  (merge defaults))]
     (log/infof "making web server: host=%s, port=%d, path=%s"
                (:host opts)
                (:port opts)
                (:path opts))
-    (immutant/run handler opts)))
+    (immutant/run router (dissoc opts :router))))
 
-(defmethod ig/halt-key! ::server [_ server]
+
+(defmethod ig/halt-key! :syksy.web/server [_ server]
   (log/info "stopping web server")
   (immutant/stop server))

@@ -4,136 +4,190 @@
             [testit.core :refer :all]
             [integrant.core :as ig]
             [clj-http.client :as http]
-            [jsonista.core :as json]
             [ring.util.http-response :as resp]
+            [muuntaja.core :as muuntaja]
             [potpuri.core :as p]
-            [syksy.core :as core]
-            [syksy.web.index :as index]
-            [syksy.web.server :as server]
-            [syksy.web.resource :as resource]
-            [syksy.web.resources :as resources]
-            [syksy.web.redirect :as redirect]))
+            [syksy.core :as core]))
 
 (def ^:dynamic system nil)
+(def ^:dynamic http-port nil)
 
-(def json-mapper (json/object-mapper {:encode-key-fn name
-                                      :decode-key-fn keyword}))
-
-
-(defn with-web-server [f]
-  (let [ctx {:foo "bar"}
-        config (p/deep-merge
-                 (core/default-components {:index-body (index/index {:title "Syksy test"})
-                                           :routes (fn [request]
-                                                     (when (-> request :uri (= "/api"))
-                                                       (resp/ok {:hello "world"
-                                                                 :ctx (-> request :ctx)})))
-                                           :ctx ctx
-                                           :addon-handlers [(ig/ref [::resource/handler ::test])
-                                                            (ig/ref [::resources/handler ::test])
-                                                            (ig/ref [::redirect/handler ::test])]})
-                 {[::server/server ::core/syksy] {:port 3001}
-                  [::resource/handler ::test] {:match? "/root" :resource-name "root.txt"}
-                  [::resources/handler ::core/syksy] {:asset-dir "server-test-resources"}
-                  [::resources/handler ::test] {:asset-prefix "/addon"
-                                                :asset-dir "addon-resources"}
-                  [::redirect/handler ::test] {:from "/moved", :location "/here"}})]
-    (ig/load-namespaces config)
-    (let [s (ig/init config)]
+(defn with-web-server [test-config components]
+  (fn [f]
+    (let [http-port' (with-open [s (java.net.ServerSocket. 0)]
+                       (.getLocalPort s))
+          config     (p/deep-merge
+                       test-config
+                       {:http {:port http-port'}})
+          system'    (-> (core/default-components config)
+                         (merge components)
+                         (doto (ig/load-namespaces))
+                         (ig/init))]
       (try
-        (binding [system s]
+        (binding [http-port http-port'
+                  system    system']
           (f))
         (finally
-          (ig/halt! s))))))
+          (ig/halt! system'))))))
 
-(use-fixtures :once with-web-server)
+(comment
+  (do (require 'syksy.web.server)
+      (require 'syksy.web.router)
+      (require 'syksy.web.resources)
+      (let [config     nil
+            components nil
+            system     (-> (core/default-components config)
+                           ;(merge components)
+                           ;(doto (ig/load-namespaces))
+                           (ig/init))]
+        (try
+          (println system)
+          (finally
+            (ig/halt! system))))))
 
-(def opts {:throw-exceptions false
-           :redirect-strategy :none
-           :accept :json})
+;;
+;; HTTP:
+;;
 
-(deftest api-is-served
-  (fact
-    (-> (http/get "http://localhost:3001/api" opts)
-        (update :body json/read-value json-mapper))
-    =in=> {:status 200
-           :headers {"Content-Type" "application/json; charset=utf-8"
-                     "cache-control" "no-store, must-revalidate"
-                     "vary" "accept-encoding"}
-           :body {:hello "world"
-                  :ctx {:foo "bar"}}}))
+(defn ->url [uri]
+  (str "http://localhost:" (or http-port 4000) uri))
 
-(deftest index-page-is-served
-  (fact
-    (http/get "http://localhost:3001/" opts)
-    =in=> {:status 200
-           :headers {"Content-Type" "text/html; charset=utf-8"
-                     "cache-control" "no-cache"
-                     "etag" (re-pattern #"\d+")}
-           :body (p/fn-> (str/index-of "title>Syksy test</title>") pos?)})
-  (let [etag (-> (http/get "http://localhost:3001/" opts)
-                 :headers
-                 (get "etag"))]
-    (fact
-      (http/get "http://localhost:3001/" {:headers {"if-none-match" etag}})
-      =in=> {:status 304})
-    (fact
-      (http/get "http://localhost:3001/" {:headers {"if-none-match" "foo"}})
-      =in=> {:status 200})))
 
-(deftest not-found-is-served
-  (fact
-    (http/get "http://localhost:3001/foozaa" opts)
-    =in=> {:status 404}))
+(defn ->headers [headers]
+  (merge {"Accept"       "application/edn"
+          "Content-Type" "application/edn"}
+         headers))
 
-(deftest resource-is-served
-  (fact
-    (http/get "http://localhost:3001/root" opts)
-    =in=> {:status 200
-           :headers {"Content-Type" "text/plain; charset=utf-8"
-                     "cache-control" "no-cache"
-                     "etag" (re-pattern #"\d+")}
-           :body "Root"}))
 
-(deftest resources-are-served
-  (fact
-    (http/get "http://localhost:3001/asset/foo.css" opts)
-    =in=> {:status 200
-           :headers {"Content-Type" "text/css; charset=utf-8"
-                     "cache-control" "no-cache"
-                     "etag" (re-pattern #"\d+")}
-           :body "* {\n  background: salmon;\n}\n\n"})
-  (fact
-    (http/get "http://localhost:3001/asset/foo.js" opts)
-    =in=> {:status 200
-           :headers {"Content-Type" "application/javascript; charset=utf-8"}})
-  (fact
-    (http/get "http://localhost:3001/asset/foo.txt" opts)
-    =in=> {:status 200
-           :headers {"Content-Type" "text/plain; charset=utf-8"}})
-  (fact
-    (http/get "http://localhost:3001/asset/foo.bar" opts)
-    =in=> {:status 404})
+(def +muuntaja+ (muuntaja/create))
 
-  (let [etag (-> (http/get "http://localhost:3001/asset/foo.txt")
-                 :headers
-                 (get "etag"))]
-    (println "etag:" etag)
-    (fact
-      (http/get "http://localhost:3001/asset/foo.txt" {:headers {"if-none-match" etag}})
-      =in=> {:status 304})
-    (fact
-      (http/get "http://localhost:3001/asset/foo.txt" {:headers {"if-none-match" "foo"}})
-      =in=> {:status 200})))
 
-(deftest addon-resources-are-served
-  (fact
-    (http/get "http://localhost:3001/addon/bar.txt" opts)
-    =in=> {:status 200
-           :body "Hullo"}))
+(defn content-type [headers]
+  (some-> headers
+          (get "Content-Type")
+          (str/split #"\s*;\s*")
+          (first)))
+
+
+(defn decode-body [response]
+  (let [format  (-> response :headers content-type)
+        decoder (or (muuntaja/decoder +muuntaja+ format)
+                    (fn [body charset] (slurp body)))]
+    (assoc response :body (some-> response
+                                  :body
+                                  (decoder "utf-8")))))
+
+
+(defn encode-body [body headers]
+  (let [format (-> headers content-type)]
+    (muuntaja/encode +muuntaja+ format body)))
+
+;;
+;; HTTP GET and POST:
+;;
+
+(defn GET
+  ([uri] (GET uri {}))
+  ([uri headers]
+   (-> (http/get (->url uri)
+                 {:headers           (->headers headers)
+                  :redirect-strategy :none
+                  :as                :stream
+                  :throw-exceptions  false})
+       decode-body)))
+
+
+(defn POST
+  ([uri] (POST uri nil nil))
+  ([uri body] (POST uri body nil))
+  ([uri body headers]
+   (let [headers (->headers headers)
+         body    (encode-body body headers)]
+     (-> (http/post (->url uri)
+                    {:body              body
+                     :headers           headers
+                     :redirect-strategy :none
+                     :as                :stream
+                     :throw-exceptions  false})
+         decode-body))))
+
+;;
+;; Test fixture:
+;;
+
+(use-fixtures :once (with-web-server nil nil))
+
+;;
+;; Tests:
+;;
 
 (deftest redirect-is-observed
   (fact
-    (http/get "http://localhost:3001/moved" opts)
-    =in=> {:status 307
-           :headers {"location" "/here"}}))
+    (GET "/")
+    => {:status  307
+        :headers {"location" "/web/"}})
+  (fact
+    (GET "/web")
+    => {:status  307
+        :headers {"location" "/web/"}}))
+
+
+(deftest index-page-is-served
+  (fact
+    (GET "/web/")
+    => {:status  200
+        :headers {"Content-Type"  "text/html; charset=utf-8"
+                  "cache-control" "private, no-cache"
+                  "etag"          (re-pattern #"\d+")}
+        :body    #(-> % (str/index-of "<title>Another fancy Syksy app</title>") (pos?))})
+  (let [etag (-> (GET "/web/")
+                 :headers
+                 (get "etag"))]
+    (fact
+      (GET "/web/" {"if-none-match" etag})
+      => {:status 304})
+    (fact
+      (GET "/web/" {"if-none-match" "foo"})
+      => {:status 200})))
+
+
+(deftest not-found-is-served
+  (fact
+    (GET "/foozaa")
+    => {:status 404}))
+
+
+(deftest resources-are-served
+  (fact
+    (GET "/asset/foo.css")
+    => {:status  200
+        :headers {"Content-Type"  "text/css; charset=utf-8"
+                  "cache-control" "private, no-cache"
+                  "etag"          (re-pattern #"\d+")}})
+
+  (fact
+    (GET "/asset/foo.js")
+    => {:status  200
+        :headers {"Content-Type" "application/javascript; charset=utf-8"}})
+
+  (fact
+    (GET "/asset/foo.txt")
+    => {:status  200
+        :headers {"Content-Type" "text/plain; charset=utf-8"}
+        :body    "Hello, world!"})
+
+  (fact
+    (GET "/asset/foo.bar")
+    => {:status 404
+        :body   "can't locate resource"})
+
+  (let [etag (-> (GET "/asset/foo.txt")
+                 :headers
+                 (get "etag"))]
+    (fact
+      (GET "/asset/foo.txt" {"if-none-match" etag})
+      => {:status 304})
+    (fact
+      (GET "/asset/foo.txt" {"if-none-match" "foo"})
+      => {:status  200
+          :headers {"etag" etag}})))

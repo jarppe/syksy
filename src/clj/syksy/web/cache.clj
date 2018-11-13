@@ -1,39 +1,41 @@
 (ns syksy.web.cache
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [ring.util.http-response :as resp])
+  (:import (java.util.concurrent TimeUnit)))
 
-(def cache-control "cache-control")
-(def cache-control-30d "public, max-age=2592000, s-maxage=2592000")
-(def cache-control-no-cache "no-cache")
-(def cache-control-no-store "no-store, must-revalidate")
+(def ^:const cache-control "cache-control")
+(def ^:const cache-control-no-cache "private, no-cache")
+(def ^:const cache-control-no-store "private, no-cache, no-store")
+(def ^:const cache-control-cache-30d (str "max-age=" (.toSeconds TimeUnit/DAYS 30)))
 
-(def vary "vary")
-(def accept-encoding "accept-encoding")
+(def ^:const vary "vary")
+(def ^:const accept-encoding "accept-encoding")
 
-(def if-none-match "if-none-match")
+(def ^:const if-none-match "if-none-match")
 
-(defn wrap-cache [handler cache-control-value]
-  (fn [req]
-    (let [response (handler req)]
-      (if (and (-> response map?)
-               (-> response :headers (get cache-control) nil?))
-        (update response :headers
-                assoc cache-control cache-control-value
-                      vary accept-encoding)
-        response))))
+(defn cache-interceptor []
+  {:leave (fn [ctx]
+            (if (-> ctx :response :headers (contains? cache-control))
+              ctx
+              (update-in ctx [:response :headers] assoc
+                         cache-control cache-control-no-store
+                         vary accept-encoding)))})
 
-(def wrap-30d-cache (fn [handler] (wrap-cache handler cache-control-30d)))
-(def wrap-no-cache (fn [handler] (wrap-cache handler cache-control-no-cache)))
-(def wrap-no-store (fn [handler] (wrap-cache handler cache-control-no-store)))
+(defn with-cache-control [response cache-control-value]
+  (update response :headers assoc cache-control cache-control-value))
 
-(defn wrap-cache-resource [handler]
-  (fn [req]
-    (let [response (handler req)]
-      (if (and (-> response map?)
-               (-> response :headers (get cache-control) nil?))
-        (update response :headers
-                assoc cache-control
-                      (if (some-> req :query-string (str/starts-with? "v="))
-                        cache-control-30d
-                        cache-control-no-cache)
-                      vary accept-encoding)
-        response))))
+(defn get-if-none-match [request]
+  (-> request :headers (get if-none-match)))
+
+(defn with-etag [response etag-value]
+  (update response :headers assoc "etag" etag-value))
+
+(defn not-modified-if-etag-match
+  "Accepts a request and a expected etag value. The `request` is expected
+  to be a HTTP request and the `etag-value` is the resources etag value.
+  If the request has an \"If-None-Match\" header with expected value, this
+  function returns HTTP 304 Not Modified response, otherwise a `nil` is
+  returned."
+  [request etag-value]
+  (when (some-> request (get-if-none-match) (= etag-value))
+    (resp/not-modified)))

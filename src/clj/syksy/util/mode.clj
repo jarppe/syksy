@@ -1,6 +1,8 @@
 (ns syksy.util.mode)
 
+
 (def modes #{:dev :prod})
+
 
 (defn mode []
   {:post [(modes %)]}
@@ -8,8 +10,10 @@
       (or "dev")
       (keyword)))
 
+
 (defn dev-mode? []
   (= (mode) :dev))
+
 
 (defn prod-mode? []
   (= (mode) :prod))
