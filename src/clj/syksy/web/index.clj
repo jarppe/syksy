@@ -43,7 +43,7 @@
        [:meta {:http-equiv "X-UA-Compatible" :content "IE=edge"}]
        [:meta {:name "viewport" :content "width=device-width, initial-scale=1, shrink-to-fit=no"}]
        [:link {:href favicon :rel "icon"}]
-       (for [href (conj css "/asset/css/style.css")]
+       (for [href (conj css "/asset/style.css")]
          [:link {:href href
                  :type "text/css"
                  :rel  "stylesheet"}])
@@ -54,7 +54,7 @@
       [:body
        [:div#app
         [:h1.loading loading]]
-       [:script {:src   "/asset/js/main.js"
+       [:script {:src   "/asset/main.js"
                  :type  "text/javascript"
                  :deref deref?}]])))
 
