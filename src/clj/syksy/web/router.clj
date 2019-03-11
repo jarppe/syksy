@@ -15,7 +15,8 @@
             [reitit.http.interceptors.exception :as exception]
             [reitit.interceptor.sieppari :as sieppari]
             [syksy.web.cache :as cache]
-            [syksy.web.index :as index]))
+            [syksy.web.index :as index]
+            [syksy.web.cors :as cors]))
 
 
 (def exception-handlers
@@ -39,6 +40,7 @@
 
 
 (def base-interceptors [(cache/cache-interceptor)
+                        (cors/cors-interceptor)
                         (parameters/parameters-interceptor)
                         (muuntaja/format-negotiate-interceptor)
                         (muuntaja/format-response-interceptor)
